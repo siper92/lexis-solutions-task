@@ -44,4 +44,4 @@ next-env.d.ts
 ai.*.md
 task.md
 task.*.md
-./sample-invoices
+*.ai.json

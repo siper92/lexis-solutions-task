@@ -6,15 +6,6 @@ interface InvoiceResultsProps {
   result: InvoiceResult;
 }
 
-function RateBadge({ base, asOf }: InvoiceResult["rates"]) {
-  return (
-    <span className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-500">
-      Rates from config · base {base}
-      {asOf ? ` · as of ${asOf}` : ""}
-    </span>
-  );
-}
-
 function DebugPanel({ debug }: { debug: NonNullable<InvoiceResult["debug"]> }) {
   return (
     <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
@@ -29,18 +20,15 @@ function DebugPanel({ debug }: { debug: NonNullable<InvoiceResult["debug"]> }) {
 }
 
 export function InvoiceResults({ result }: InvoiceResultsProps) {
-  const { sourceCurrency, lineItems, total, rates, debug } = result;
+  const { sourceCurrency, lineItems, total, debug } = result;
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <span>Invoice currency</span>
-          <span className="rounded-full border border-blue-300 bg-blue-50 px-3 py-1 font-medium text-blue-700">
-            {sourceCurrency}
-          </span>
-        </div>
-        <RateBadge base={rates.base} asOf={rates.asOf} />
+      <div className="flex items-center gap-2 text-sm text-gray-600">
+        <span>Invoice currency</span>
+        <span className="rounded-full border border-blue-300 bg-blue-50 px-3 py-1 font-medium text-blue-700">
+          {sourceCurrency}
+        </span>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">

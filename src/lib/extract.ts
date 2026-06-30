@@ -5,7 +5,6 @@ import {
   INVOICE_EXTRACTION_TOOL,
   getAnthropicClient,
 } from "@/lib/anthropic";
-import { applyDevRequestDelay } from "@/lib/devMode";
 
 export class ExtractionError extends Error {
   readonly detail?: string;
@@ -60,8 +59,6 @@ const EXTRACTION_PROMPT = [
 
 export async function extractInvoice(pdfBase64: string): Promise<RawExtraction> {
   const client = getAnthropicClient();
-
-  await applyDevRequestDelay();
 
   const message = await client.messages.create({
     model: EXTRACTION_MODEL,

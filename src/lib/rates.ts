@@ -1,41 +1,78 @@
 import { z } from "zod";
-import type { CurrencyCode } from "@/lib/currency";
+import { SUPPORTED_CURRENCIES, type CurrencyCode } from "@/lib/currency";
 import type { CurrencyAmounts, RateInfo } from "@/types/invoice";
 
-export class RatesConfigError extends Error {}
+export class RatesUnavailableError extends Error {}
 
-const ratesEnvSchema = z.object({
-  RATES_BASE: z.string().min(1),
-  RATE_USD: z.coerce.number().positive(),
-  RATE_EUR: z.coerce.number().positive(),
-  RATE_GBP: z.coerce.number().positive(),
-  RATES_AS_OF: z.string().min(1).optional(),
+const FRANKFURTER_RATES_URL = "https://api.frankfurter.dev/v2/rates";
+const RATES_BASE: CurrencyCode = "EUR";
+
+const rateRecordSchema = z.object({
+  date: z.string(),
+  base: z.string(),
+  quote: z.string(),
+  rate: z.number().positive(),
 });
 
-interface ExchangeRates {
-  info: RateInfo;
-  perBase: Record<CurrencyCode, number>;
-}
+const ratesResponseSchema = z.array(rateRecordSchema);
 
-function loadRates(): ExchangeRates {
-  const parsed = ratesEnvSchema.safeParse(process.env);
+export async function fetchExchangeRates(): Promise<RateInfo> {
+  const quotes = SUPPORTED_CURRENCIES.filter(
+    (currency) => currency !== RATES_BASE,
+  );
+  const url = `${FRANKFURTER_RATES_URL}?base=${RATES_BASE}&quotes=${quotes.join(",")}`;
 
-  if (!parsed.success) {
-    throw new RatesConfigError(
-      "Exchange rates are not configured. Set RATES_BASE, RATE_USD, RATE_EUR and RATE_GBP in .env.local.",
+  let response: Response;
+  try {
+    response = await fetch(url);
+  } catch (cause) {
+    throw new RatesUnavailableError("Could not reach the exchange rate service.", {
+      cause,
+    });
+  }
+
+  if (!response.ok) {
+    throw new RatesUnavailableError(
+      `The exchange rate service responded with status ${response.status}.`,
     );
   }
 
-  const env = parsed.data;
+  const parsed = ratesResponseSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    throw new RatesUnavailableError(
+      "The exchange rate service returned an unexpected response.",
+    );
+  }
+
+  const rateByQuote = new Map(
+    parsed.data.map((record) => [record.quote, record.rate]),
+  );
+
+  const perBase = {} as CurrencyAmounts;
+  for (const currency of SUPPORTED_CURRENCIES) {
+    if (currency === RATES_BASE) {
+      perBase[currency] = 1;
+      continue;
+    }
+
+    const rate = rateByQuote.get(currency);
+    if (rate === undefined) {
+      throw new RatesUnavailableError(
+        `The exchange rate service did not return a rate for ${currency}.`,
+      );
+    }
+    perBase[currency] = rate;
+  }
 
   return {
-    info: { base: env.RATES_BASE, asOf: env.RATES_AS_OF ?? null },
-    perBase: { USD: env.RATE_USD, EUR: env.RATE_EUR, GBP: env.RATE_GBP },
+    base: RATES_BASE,
+    asOf: parsed.data[0]?.date ?? null,
+    perBase,
   };
 }
 
 function convert(
-  rates: ExchangeRates,
+  rates: RateInfo,
   amount: number,
   from: CurrencyCode,
   to: CurrencyCode,
@@ -44,17 +81,13 @@ function convert(
 }
 
 export function convertToAllCurrencies(
+  rates: RateInfo,
   amount: number,
   from: CurrencyCode,
-): { amounts: CurrencyAmounts; info: RateInfo } {
-  const rates = loadRates();
-
+): CurrencyAmounts {
   return {
-    info: rates.info,
-    amounts: {
-      USD: convert(rates, amount, from, "USD"),
-      EUR: convert(rates, amount, from, "EUR"),
-      GBP: convert(rates, amount, from, "GBP"),
-    },
+    USD: convert(rates, amount, from, "USD"),
+    EUR: convert(rates, amount, from, "EUR"),
+    GBP: convert(rates, amount, from, "GBP"),
   };
 }

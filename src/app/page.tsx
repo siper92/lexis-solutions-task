@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { UploadDropzone } from "@/components/UploadDropzone";
 import { StatusBanner } from "@/components/StatusBanner";
+import { RatesTable } from "@/components/RatesTable";
 import { InvoiceResults } from "@/components/InvoiceResults";
 import { formatErrorMessage } from "@/lib/errorMessage";
 import type { ApiResult, InvoiceResult } from "@/types/invoice";
@@ -81,6 +82,8 @@ export default function Home() {
           onFileAccepted={parse}
           onFileRejected={reject}
         />
+
+        {phase === "done" && result && <RatesTable rates={result.rates} />}
 
         {phase === "done" && result && <InvoiceResults result={result} />}
       </div>

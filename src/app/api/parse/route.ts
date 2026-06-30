@@ -3,7 +3,11 @@ import type { NextRequest } from "next/server";
 import { isSupportedCurrency, normalizeCurrencyCode } from "@/lib/currency";
 import { AnthropicConfigError } from "@/lib/anthropic";
 import { ExtractionError, extractInvoice } from "@/lib/extract";
-import { RatesConfigError, convertToAllCurrencies } from "@/lib/rates";
+import {
+  RatesUnavailableError,
+  convertToAllCurrencies,
+  fetchExchangeRates,
+} from "@/lib/rates";
 import { validatePdfFile } from "@/lib/validation";
 import { DEV_MODE, describeError, devLog } from "@/lib/devMode";
 import type {
@@ -19,7 +23,7 @@ const STATUS_BY_CODE: Record<ApiError["code"], number> = {
   CURRENCY_NOT_IDENTIFIED: 422,
   UNSUPPORTED_CURRENCY: 422,
   EXTRACTION_FAILED: 502,
-  RATES_MISCONFIGURED: 500,
+  RATES_UNAVAILABLE: 502,
   INTERNAL_ERROR: 500,
 };
 
@@ -52,9 +56,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiResult
 
   try {
     const pdfBase64 = Buffer.from(await file.arrayBuffer()).toString("base64");
-    const extraction = await extractInvoice(pdfBase64);
+    const [extraction, rates] = await Promise.all([
+      extractInvoice(pdfBase64),
+      fetchExchangeRates(),
+    ]);
 
     devLog("extraction", extraction);
+    devLog("rates", rates);
 
     if (!extraction.sourceCurrency) {
       return fail(
@@ -73,18 +81,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiResult
 
     const lineItems: ConvertedLineItem[] = extraction.lineItems.map((item) => ({
       description: item.description,
-      amounts: convertToAllCurrencies(item.amount, sourceCurrency).amounts,
+      amounts: convertToAllCurrencies(rates, item.amount, sourceCurrency),
     }));
 
-    const total = convertToAllCurrencies(extraction.total, sourceCurrency);
+    const total = convertToAllCurrencies(rates, extraction.total, sourceCurrency);
 
     return NextResponse.json({
       ok: true,
       data: {
         sourceCurrency,
         lineItems,
-        total: total.amounts,
-        rates: total.info,
+        total,
+        rates,
         ...(DEV_MODE
           ? { debug: { rawExtraction: extraction, normalizedCurrency: sourceCurrency } }
           : {}),
@@ -93,8 +101,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiResult
   } catch (error) {
     devLog("parse failed", error);
 
-    if (error instanceof RatesConfigError) {
-      return fail("RATES_MISCONFIGURED", error.message, describeError(error));
+    if (error instanceof RatesUnavailableError) {
+      return fail("RATES_UNAVAILABLE", error.message, describeError(error));
     }
     if (error instanceof AnthropicConfigError) {
       return fail("EXTRACTION_FAILED", error.message, describeError(error));

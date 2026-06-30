@@ -18,3 +18,10 @@ export function formatCurrency(amount: number, currency: CurrencyCode): string {
     maximumFractionDigits: 2,
   }).format(amount);
 }
+
+export function formatExchangeRate(rate: number): string {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  }).format(rate);
+}

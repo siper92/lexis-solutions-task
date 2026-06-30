@@ -10,6 +10,7 @@ export interface ConvertedLineItem {
 export interface RateInfo {
   base: string;
   asOf: string | null;
+  perBase: CurrencyAmounts;
 }
 
 export interface RawExtraction {
@@ -38,7 +39,7 @@ export type ApiErrorCode =
   | "CURRENCY_NOT_IDENTIFIED"
   | "UNSUPPORTED_CURRENCY"
   | "EXTRACTION_FAILED"
-  | "RATES_MISCONFIGURED"
+  | "RATES_UNAVAILABLE"
   | "INTERNAL_ERROR";
 
 export interface ApiError {
