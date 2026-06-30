@@ -5,8 +5,16 @@ import {
   INVOICE_EXTRACTION_TOOL,
   getAnthropicClient,
 } from "@/lib/anthropic";
+import { applyDevRequestDelay } from "@/lib/devMode";
 
-export class ExtractionError extends Error {}
+export class ExtractionError extends Error {
+  readonly detail?: string;
+
+  constructor(message: string, detail?: string) {
+    super(message);
+    this.detail = detail;
+  }
+}
 
 const extractionSchema = z.object({
   sourceCurrency: z.string().nullable(),
@@ -30,6 +38,8 @@ const EXTRACTION_PROMPT = [
 
 export async function extractInvoice(pdfBase64: string): Promise<RawExtraction> {
   const client = getAnthropicClient();
+
+  await applyDevRequestDelay();
 
   const message = await client.messages.create({
     model: EXTRACTION_MODEL,
@@ -59,13 +69,19 @@ export async function extractInvoice(pdfBase64: string): Promise<RawExtraction> 
   );
 
   if (!toolUse) {
-    throw new ExtractionError("The model did not return structured invoice data.");
+    throw new ExtractionError(
+      "The model did not return structured invoice data.",
+      JSON.stringify({ stopReason: message.stop_reason, content: message.content }, null, 2),
+    );
   }
 
   const result = extractionSchema.safeParse(toolUse.input);
 
   if (!result.success) {
-    throw new ExtractionError("The extracted invoice data was malformed.");
+    throw new ExtractionError(
+      "The extracted invoice data was malformed.",
+      JSON.stringify({ issues: result.error.issues, rawInput: toolUse.input }, null, 2),
+    );
   }
 
   return result.data;

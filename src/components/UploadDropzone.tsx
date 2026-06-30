@@ -5,12 +5,14 @@ import { ACCEPTED_MIME_TYPE, validatePdfFile } from "@/lib/validation";
 
 interface UploadDropzoneProps {
   disabled: boolean;
+  loading: boolean;
   onFileAccepted: (file: File) => void;
   onFileRejected: (message: string) => void;
 }
 
 export function UploadDropzone({
   disabled,
+  loading,
   onFileAccepted,
   onFileRejected,
 }: UploadDropzoneProps) {
@@ -40,7 +42,7 @@ export function UploadDropzone({
   }
 
   return (
-    <>
+    <div className="relative">
       <input
         ref={inputRef}
         type="file"
@@ -59,19 +61,27 @@ export function UploadDropzone({
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={() => setIsDragging(false)}
-        className={`flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-16 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-16 text-center shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
           isDragging
-            ? "border-blue-500 bg-blue-950/30"
-            : "border-zinc-700 bg-zinc-900/40 hover:border-zinc-500 hover:bg-zinc-900/70"
+            ? "border-blue-500 bg-blue-50"
+            : "border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50"
         }`}
       >
-        <span className="text-base font-medium text-zinc-100">
+        <span className="text-base font-medium text-gray-900">
           Drop a PDF invoice here
         </span>
-        <span className="text-sm text-zinc-400">
+        <span className="text-sm text-gray-500">
           or click to browse (max 10 MB)
         </span>
       </button>
-    </>
+      {loading && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/80 backdrop-blur-sm">
+          <span className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
+          <span className="text-sm font-medium text-gray-700">
+            Parsing invoice…
+          </span>
+        </div>
+      )}
+    </div>
   );
 }

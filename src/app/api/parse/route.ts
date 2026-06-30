@@ -5,6 +5,7 @@ import { AnthropicConfigError } from "@/lib/anthropic";
 import { ExtractionError, extractInvoice } from "@/lib/extract";
 import { RatesConfigError, convertToAllCurrencies } from "@/lib/rates";
 import { validatePdfFile } from "@/lib/validation";
+import { DEV_MODE, describeError, devLog } from "@/lib/devMode";
 import type {
   ApiError,
   ApiResult,
@@ -22,9 +23,16 @@ const STATUS_BY_CODE: Record<ApiError["code"], number> = {
   INTERNAL_ERROR: 500,
 };
 
-function fail(code: ApiError["code"], message: string): NextResponse<ApiResult> {
+function fail(
+  code: ApiError["code"],
+  message: string,
+  detail?: string,
+): NextResponse<ApiResult> {
+  const error: ApiError =
+    DEV_MODE && detail ? { code, message, detail } : { code, message };
+
   return NextResponse.json(
-    { ok: false, error: { code, message } },
+    { ok: false, error },
     { status: STATUS_BY_CODE[code] },
   );
 }
@@ -45,6 +53,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiResult
   try {
     const pdfBase64 = Buffer.from(await file.arrayBuffer()).toString("base64");
     const extraction = await extractInvoice(pdfBase64);
+
+    devLog("extraction", extraction);
 
     if (!extraction.sourceCurrency) {
       return fail(
@@ -75,21 +85,27 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiResult
         lineItems,
         total: total.amounts,
         rates: total.info,
+        ...(DEV_MODE
+          ? { debug: { rawExtraction: extraction, normalizedCurrency: sourceCurrency } }
+          : {}),
       },
     });
   } catch (error) {
+    devLog("parse failed", error);
+
     if (error instanceof RatesConfigError) {
-      return fail("RATES_MISCONFIGURED", error.message);
+      return fail("RATES_MISCONFIGURED", error.message, describeError(error));
     }
     if (error instanceof AnthropicConfigError) {
-      return fail("EXTRACTION_FAILED", error.message);
+      return fail("EXTRACTION_FAILED", error.message, describeError(error));
     }
     if (error instanceof ExtractionError) {
-      return fail("EXTRACTION_FAILED", error.message);
+      return fail("EXTRACTION_FAILED", error.message, error.detail);
     }
     return fail(
       "INTERNAL_ERROR",
       "Something went wrong while parsing the invoice. Please try again.",
+      describeError(error),
     );
   }
 }

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -11,5 +11,5 @@
 
 html,
 body {
-  background-color: #09090b;
+  background-color: #f3f4f6;
 }

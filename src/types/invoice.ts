@@ -12,11 +12,23 @@ export interface RateInfo {
   asOf: string | null;
 }
 
+export interface RawExtraction {
+  sourceCurrency: string | null;
+  lineItems: { description: string; amount: number }[];
+  total: number;
+}
+
+export interface InvoiceDebug {
+  rawExtraction: RawExtraction;
+  normalizedCurrency: string;
+}
+
 export interface InvoiceResult {
   sourceCurrency: CurrencyCode;
   lineItems: ConvertedLineItem[];
   total: CurrencyAmounts;
   rates: RateInfo;
+  debug?: InvoiceDebug;
 }
 
 export type ApiErrorCode =
@@ -32,6 +44,7 @@ export type ApiErrorCode =
 export interface ApiError {
   code: ApiErrorCode;
   message: string;
+  detail?: string;
 }
 
 export type ApiResult =
