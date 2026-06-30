@@ -44,7 +44,7 @@ export function InvoiceResults({ result }: InvoiceResultsProps) {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-        <table className="w-full min-w-[36rem] border-collapse text-sm">
+        <table className="w-full min-w-xl border-collapse text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
               <th className="px-4 py-3 font-medium">Description</th>

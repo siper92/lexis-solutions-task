@@ -32,7 +32,7 @@ export const INVOICE_EXTRACTION_TOOL: Anthropic.Tool = {
       sourceCurrency: {
         type: ["string", "null"],
         description:
-          "The single ISO 4217 currency code the invoice is denominated in (e.g. USD, EUR, GBP, JPY). Use null if the currency cannot be determined with confidence.",
+          "The ISO 4217 currency code the invoice is denominated in. Only USD, EUR and GBP are supported: resolve any $ as USD, any € as EUR, and any £ as GBP, also using currency codes and contextual cues. Use null only when the document has no monetary or currency indication whatsoever.",
       },
       lineItems: {
         type: "array",
@@ -45,17 +45,18 @@ export const INVOICE_EXTRACTION_TOOL: Anthropic.Tool = {
               description: "The line item description as written on the invoice.",
             },
             amount: {
-              type: "number",
+              type: "string",
               description:
-                "The line item amount in the source currency, as a plain number without symbols or separators.",
+                "The line item amount exactly as printed in the document, preserving its original thousands and decimal separators, but without the currency symbol or code (for example \"19.092,00\" or \"1,234.56\").",
             },
           },
           required: ["description", "amount"],
         },
       },
       total: {
-        type: "number",
-        description: "The invoice grand total in the source currency, as a plain number.",
+        type: "string",
+        description:
+          "The invoice grand total exactly as printed in the document, preserving its original thousands and decimal separators, but without the currency symbol or code.",
       },
     },
     required: ["sourceCurrency", "lineItems", "total"],
