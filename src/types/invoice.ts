@@ -8,7 +8,7 @@ export interface ConvertedLineItem {
 }
 
 export interface RateInfo {
-  base: string;
+  base: CurrencyCode;
   asOf: string | null;
   perBase: CurrencyAmounts;
 }

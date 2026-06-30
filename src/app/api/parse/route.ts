@@ -56,18 +56,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiResult
 
   try {
     const pdfBase64 = Buffer.from(await file.arrayBuffer()).toString("base64");
-    const [extraction, rates] = await Promise.all([
-      extractInvoice(pdfBase64),
-      fetchExchangeRates(),
-    ]);
-
+    const extraction = await extractInvoice(pdfBase64);
     devLog("extraction", extraction);
-    devLog("rates", rates);
 
     if (!extraction.sourceCurrency) {
       return fail(
         "CURRENCY_NOT_IDENTIFIED",
-        "The invoice currency could not be identified. Please try a clearer invoice.",
+        "The invoice currency could not be identified. Recognized currencies are USD, EUR and GBP.",
       );
     }
 
@@ -78,6 +73,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiResult
         `The invoice currency (${sourceCurrency}) is not supported. Only USD, EUR and GBP can be converted.`,
       );
     }
+
+    const rates = await fetchExchangeRates(sourceCurrency);
+    devLog("rates", rates);
 
     const lineItems: ConvertedLineItem[] = extraction.lineItems.map((item) => ({
       description: item.description,

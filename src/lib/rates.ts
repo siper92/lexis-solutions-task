@@ -5,7 +5,6 @@ import type { CurrencyAmounts, RateInfo } from "@/types/invoice";
 export class RatesUnavailableError extends Error {}
 
 const FRANKFURTER_RATES_URL = "https://api.frankfurter.dev/v2/rates";
-const RATES_BASE: CurrencyCode = "EUR";
 
 const rateRecordSchema = z.object({
   date: z.string(),
@@ -16,11 +15,9 @@ const rateRecordSchema = z.object({
 
 const ratesResponseSchema = z.array(rateRecordSchema);
 
-export async function fetchExchangeRates(): Promise<RateInfo> {
-  const quotes = SUPPORTED_CURRENCIES.filter(
-    (currency) => currency !== RATES_BASE,
-  );
-  const url = `${FRANKFURTER_RATES_URL}?base=${RATES_BASE}&quotes=${quotes.join(",")}`;
+export async function fetchExchangeRates(base: CurrencyCode): Promise<RateInfo> {
+  const quotes = SUPPORTED_CURRENCIES.filter((currency) => currency !== base);
+  const url = `${FRANKFURTER_RATES_URL}?base=${base}&quotes=${quotes.join(",")}`;
 
   let response: Response;
   try {
@@ -50,7 +47,7 @@ export async function fetchExchangeRates(): Promise<RateInfo> {
 
   const perBase = {} as CurrencyAmounts;
   for (const currency of SUPPORTED_CURRENCIES) {
-    if (currency === RATES_BASE) {
+    if (currency === base) {
       perBase[currency] = 1;
       continue;
     }
@@ -65,7 +62,7 @@ export async function fetchExchangeRates(): Promise<RateInfo> {
   }
 
   return {
-    base: RATES_BASE,
+    base,
     asOf: parsed.data[0]?.date ?? null,
     perBase,
   };
